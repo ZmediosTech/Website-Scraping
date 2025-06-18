@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style>
+  .loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: rgba(255, 255, 255, 0.6);
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+</style>
+  <meta charset="UTF-8">
+  <title>Franchise Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">Franchise Tracker</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link filter_data" id="franchises"  href="#">RightBiz Latest Franchise</a></li>
+          <li class="nav-item"><a class="nav-link filter_data" id="all_franchises"  href="#">RightBiz All Listings Franchise</a></li>
+           <li class="nav-item"><a class="nav-link filter_data" id="bta" href="#">RightBiz Latest BTA</a></li>
+          <li class="nav-item"><a class="nav-link filter_data" id="all_bta"  href="#">RightBiz All Listings BTA</a></li>
+          <li class="nav-item"><a class="nav-link filter_data" id="bfs_franchises"  href="#">BusinessesForSale Latest Franchise</a></li>
+          <li class="nav-item"><a class="nav-link filter_data" id="bfs_all_franchises"  href="#">BusinessesForSale All Listings Franchise</a></li>
+          <li class="nav-item"><a class="nav-link filter_data" id="bfs_bta" href="#">BusinessesForSale Latest BTA</a></li>
+          <li class="nav-item"><a class="nav-link filter_data" id="bfs_all_bta"  href="#">BusinessesForSale All Listings BTA</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    {% block content %}
+    <!-- Your page content goes here -->
+    {% endblock %}
+  </div>
+  <div id="loader" class="loader-overlay" style="display: none;">
+  <div class="spinner-border text-primary" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+</div>
+  <footer class="text-center py-3 mt-5 border-top">
+    <small>&copy; {{ year }} Dalton Company</small>
+  </footer>
+  <input type="hidden" id="rb_franchise_count" name="user_id" value="0">
+<input type="hidden" id="rb_bta_count" name="session_token" value="0">
+<input type="hidden" id="bfs_franchise_count" name="source_page" value="0">
+<input type="hidden" id="bfs_bta_count" name="timestamp" value="0">
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+<!--  $(document).ready(function () {-->
+<!--   get_all_data('franchises',rb_franchise_count,rb_bta_count,bfs_franchise_count,bfs_bta_count)-->
+<!--  })-->
+
+
+$('.filter_data').on('click', function() {
+  const filter_name = $(this).attr('id');
+  var rb_franchise_count = $('#rb_franchise_count').val();
+  var rb_bta_count = $('#rb_bta_count').val();
+  var bfs_franchise_count = $('#bfs_franchise_count').val();
+  var bfs_bta_count = $('#bfs_bta_count').val();
+  get_all_data(filter_name,rb_franchise_count,rb_bta_count,bfs_franchise_count,bfs_bta_count)
+});
+
+
+
+  function get_all_data(filter_name,rb_franchise_count,rb_bta_count,bfs_franchise_count,bfs_bta_count)
+  {
+      $('#loader').show();
+      $.ajax({
+        url: '/get_filter_data/',
+        type: 'GET',
+        data: { filter_name: filter_name, rb_franchise_count:rb_franchise_count,rb_bta_count:rb_bta_count,
+        bfs_franchise_count:bfs_franchise_count,bfs_bta_count:bfs_bta_count},
+        success: function(response) {
+          const itemsPerPage = 10;
+          const data = response.data;
+
+          $('#rb_franchise_count').val(response.rb_franchise_count);
+          $('#rb_bta_count').val(response.rb_bta_count);
+          $('#bfs_franchise_count').val(response.bfs_franchise_count);
+          $('#bfs_bta_count').val(response.bfs_bta_count);
+          let currentPage = 1;
+
+          function renderTable(page) {
+            $('#business_data_table tbody').empty();
+            const start = (page - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const paginatedItems = data.slice(start, end);
+
+            if (paginatedItems.length === 0) {
+              $('#business_data_table tbody').append(`
+                <tr>
+                  <td colspan="2" class="text-center text-danger">No records found</td>
+                </tr>
+              `);
+            } else {
+              paginatedItems.forEach(function(item, index) {
+                $('#business_data_table tbody').append(`
+                  <tr>
+                    <td>${start + index + 1}</td>
+                    <td>${item.business_name}</td>
+                  </tr>
+                `);
+              });
+            }
+          }
+
+          function renderPagination(totalItems) {
+            $('#pagination').empty();
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+            if (totalPages <= 1) return;
+
+            // Previous
+            $('#pagination').append(`
+              <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" data-page="${currentPage - 1}">Previous</a>
+              </li>
+            `);
+
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+              $('#pagination').append(`
+                <li class="page-item ${currentPage === i ? 'active' : ''}">
+                  <a class="page-link" href="#" data-page="${i}">${i}</a>
+                </li>
+              `);
+            }
+
+            // Next
+            $('#pagination').append(`
+              <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" data-page="${currentPage + 1}">Next</a>
+              </li>
+            `);
+          }
+
+          // Initial render
+          renderTable(currentPage);
+          renderPagination(data.length);
+
+          // Handle pagination click
+          $('#pagination').off('click').on('click', 'a.page-link', function(e) {
+            e.preventDefault();
+            const selectedPage = parseInt($(this).data('page'));
+            const totalPages = Math.ceil(data.length / itemsPerPage);
+
+            if (!isNaN(selectedPage) && selectedPage >= 1 && selectedPage <= totalPages) {
+              currentPage = selectedPage;
+              renderTable(currentPage);
+              renderPagination(data.length);
+            }
+          });
+        },
+        error: function() {
+          alert('Failed to fetch data.');
+        }
+        ,
+    complete: function() {
+      $('#loader').hide(); // Always hide loader
+    }
+      });
+  }
+
+</script>
+
+</body>
+</html>
